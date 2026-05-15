@@ -21,7 +21,7 @@ async def get_question(
         db: Session = Depends(get_db),
 ):
     try:
-        result = await genarate_question(
+        result = await generate_question(
             topic = req.topic,
             difficulty = req.difficulty,
             question_type = req.question_type,
