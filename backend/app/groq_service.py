@@ -17,6 +17,7 @@ async def generate_question(topic: str, difficulty: str, question_type:str,) -> 
     Respond with ONLY a valid JSON object in this exact format:
     {{
         "question": "The full question text",
+        "hints": ["hint1", "hint2", "hint3"],
         "expected_concepts": ["concept1", "concept2"],
         "time_limit_minutes": <integer>
     }}"""
@@ -32,7 +33,7 @@ async def generate_question(topic: str, difficulty: str, question_type:str,) -> 
     )
 
     raw = response.choices[0].message.content.strip()
-    return json.leads(raw)
+    return json.loads(raw)
 
 async def evaluate_answer(
     question: str,
