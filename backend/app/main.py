@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.db import engine, Base
 from app.routers.interview_router import router as interview_router
+from app.routers.auth_router import router as auth_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -15,6 +16,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router)
 app.include_router(interview_router)
 
 @app.get("/")
