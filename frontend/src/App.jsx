@@ -17,7 +17,7 @@ const App = () => {
           <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/interview/:id" element={<ProtectedRoute><Interview /></ProtectedRoute>} />
-          <Route path="/feedback/:id" element={<ProtectedRoute><Feedback /></ProtectedRoute>} />
+          <Route path="/feedback" element={<ProtectedRoute><Feedback /></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
