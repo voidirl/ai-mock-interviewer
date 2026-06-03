@@ -469,4 +469,121 @@ const css = `
     font-size: 13px;
 }
 `;
- 
+
+
+const LANGUAGES = ["javascript", "python", "java", "cpp", "go", "typescript"];
+
+const scoreColor = (s) => {
+    if (s >= 80) return "#4ade80";
+    if (s >= 50) return "#fb923c";
+    return "#f87171";
+};
+
+const useTimer = (limitMin, active) => {
+    const [secs, setSecs] = useState(limitMin * 60);
+    useEffect(() => {
+        if (!active) return;
+        setSecs(limitMin * 60);
+        const id = setInterval(() => setSecs(s => s > 0 ? s - 1 : 0), 1000);
+        return () => clearInterval(id);
+    }, [limitMin, active]);
+    const m = String(Math.floor(secs / 60)).padStart(2, "0");
+    const s = String(secs % 60).padStart(2, "0");
+    return { display: `${m}:${s}`, urgent: secs < 60 };
+};
+
+const Interview = () => {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const { token } = useAuth();
+    const config = location.state || {};
+
+    const [qNum, setQNum] = useState(0);
+    const [question, setQuestion] = useState(null);
+    const [loadingQ, setLoadingQ] = useState(false);
+    const [language, setLanguage] = useState("python");
+    const [submitting, setSubmitting] = useState(false);
+    const [loadingFollowup, setLoadingFollowup] = useState(false);
+    const [followup, setFollowup] = useState(null);
+    const [error, setError] = useState("");
+    const [convoHistory, setConvoHistory] = useState([]);
+    const [session, setSession] = useState([]);
+    const [answer, setAnswer] = useState("");
+    const [showHints, setShowHints] = useState(false);
+    const [result, setResult] = useState(null);
+
+    const isCoding = config.mode === "coding";
+    const { display: timerDisplay, urgent } = useTimer(question?.time_limit_minutes || 15, !!question && !result);
+
+    const headers = { Authorization: `Bearer ${token}` };
+
+    const fetchQuestion = useCallback(async () => {
+        setLoadingQ(true);
+        setError("");
+        setAnswer("");
+        setResult(null);
+        setFollowup(null);
+        setConvoHistory([]);
+        setShowHints(false);
+
+        try {
+            const res = await axios.post(`${API}/interview/question`, {
+                topic: config.topic,
+                difficulty: config.difficulty,
+                question_type: config.question_type,
+            }, { headers });
+            setQuestion(res.data);
+        } catch (e) {
+            setError(e.response?.data?.message || "Failed to load question. Please try again.");
+        } finally {
+            setLoadingQ(false);
+        }
+    }, [qNum]);
+
+    useEffect(() => {
+        if (!config.topic) { navigate("/dashboard"); return; }
+        fetchQuestion();
+    }, [qNum]);
+
+    const handleSubmit = async () => {
+        if (!answer.trim()) return;
+        setSubmitting(true);
+        setError("");
+        try {
+            const res = await axios.post(`${API}/interview/evaluate`, {
+                question: question.question,
+                user_answer: answer,
+                question_type: config.question_type,
+                language: isCoding ? language : undefined,
+            }, { headers });
+            setResult(res.data);
+            setConvoHistory([
+                { role: "interviewer", content: question.question },
+                { role: "candidate", content: answer },
+            ]);
+            setSession(prev => [...prev, { question: question.question, result: res.data, answer }]);
+        } catch (e) {
+            setError(e.respond?.data?.detail || "Evaluation failed.");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleFollowup = async () => {
+        setLoadingFollowup(true);
+        setError("");
+        try {
+            const res = await axios.post(`${API}/interview/followup`, {
+                conversation_history: convoHistory,
+                question: question.question,
+                user_answer: answer,
+            }, { headers });
+            setFollowup(res.data);
+            setConvoHistory(prev => [...prev, { role: "interviewer", content: res.data.followup_question },]);
+        } catch (e){
+            setError(e.response?.data?.detail || "Followup Failed.");
+        } finally {
+            setLoadingFollowup(false);
+        }  
+    }
+};
