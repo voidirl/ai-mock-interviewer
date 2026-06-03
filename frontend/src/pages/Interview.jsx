@@ -580,10 +580,254 @@ const Interview = () => {
             }, { headers });
             setFollowup(res.data);
             setConvoHistory(prev => [...prev, { role: "interviewer", content: res.data.followup_question },]);
-        } catch (e){
+        } catch (e) {
             setError(e.response?.data?.detail || "Followup Failed.");
         } finally {
             setLoadingFollowup(false);
-        }  
+        }
     }
+
+    const handleNext = () => {
+        if (qNum < TOTAL_QUESTIONS) {
+            navigate("/feedback", { status: { session, config } });
+        } else {
+            setQNum(n => n + 1);
+        }
+    };
+
+    const pipColors = Array.from({ length: TOTAL_QUESTIONS }, (_, i) => {
+        if (i < session.length) {
+            const s = session[i].result.score;
+            return scoreColor(s);
+        }
+        if (i === qNum ) return "#0ea5e9";
+        return "rgba(255,255,255,0.07)";
+    });
+
+        return (
+        <>
+            <style>{css}</style>
+            <div className="iv-root">
+                <div className="iv-grid-bg" />
+ 
+                <nav className="iv-nav">
+                    <div className="iv-logo">
+                        <div className="iv-logo-icon">M</div>
+                        MockForge
+                    </div>
+ 
+                    <div className="iv-nav-center">
+                        {Array.from({ length: TOTAL_QUESTIONS }, (_, i) => (
+                            <div key={i} className="iv-q-pip" style={{ background: pipColors[i] }} />
+                        ))}
+                    </div>
+ 
+                    <div className="iv-nav-right">
+                        <div
+                            className="iv-timer"
+                            style={{ color: urgent ? "#f87171" : "#64748b", borderColor: urgent ? "rgba(248,113,113,0.3)" : undefined }}
+                        >
+                            {timerDisplay}
+                        </div>
+                        <button className="iv-exit-btn" onClick={() => navigate("/dashboard")}>← exit</button>
+                    </div>
+                </nav>
+ 
+                <div className="iv-body">
+                    
+                    {/* Question counter */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <span style={{ fontFamily: "'Geist Mono',monospace", fontSize: 11, color: "#334155" }}>
+                            Question {qNum + 1} / {TOTAL_QUESTIONS}
+                        </span>
+                        <div style={{ display: "flex", gap: 6 }}>
+                            {[
+                                { label: config.topic, color: "#00d2a0" },
+                                { label: config.difficulty, color: "#fb923c" },
+                                { label: config.question_type?.replace("_", " "), color: "#94a3b8" },
+                            ].map(b => (
+                                <span
+                                    key={b.label}
+                                    className="iv-badge"
+                                    style={{
+                                        color: b.color,
+                                        background: `${b.color}12`,
+                                        border: `1px solid ${b.color}25`,
+                                    }}
+                                >{b.label}</span>
+                            ))}
+                        </div>
+                    </div>
+ 
+                    {/* Error */}
+                    {error && <div className="iv-error">{error}</div>}
+ 
+                    {/* Loading question */}
+                    {loadingQ && (
+                        <div className="iv-loading">
+                            <div className="iv-spinner" />
+                            generating question...
+                        </div>
+                    )}
+ 
+                    {/* Question */}
+                    {!loadingQ && question && (
+                        <div className="iv-q-card">
+                            <div className="iv-q-meta">
+                                <span
+                                    className="iv-badge"
+                                    style={{
+                                        color: isCoding ? "#0ea5e9" : "#a78bfa",
+                                        background: isCoding ? "rgba(14,165,233,0.1)" : "rgba(167,139,250,0.1)",
+                                        border: `1px solid ${isCoding ? "rgba(14,165,233,0.2)" : "rgba(167,139,250,0.2)"}`,
+                                    }}
+                                >
+                                    {config.question_type?.replace("_", " ")}
+                                </span>
+                                {question.expected_concepts?.slice(0, 3).map(c => (
+                                    <span key={c} className="iv-badge" style={{ color: "#475569", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>{c}</span>
+                                ))}
+                            </div>
+                            <p className="iv-q-text">{question.question}</p>
+                            {showHints && question.hints?.length > 0 && (
+                                <div className="iv-hints">
+                                    {question.hints.map((h, i) => (
+                                        <div key={i} className="iv-hint-item">{h}</div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+ 
+                    {/* Answer */}
+                    {!loadingQ && question && !result && (
+                        <div className="iv-answer-card">
+                            <div className="iv-answer-header">
+                                <span className="iv-answer-label">{isCoding ? "your code" : "your answer"}</span>
+                                {isCoding && (
+                                    <select
+                                        className="iv-lang-select"
+                                        value={language}
+                                        onChange={e => setLanguage(e.target.value)}
+                                    >
+                                        {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
+                                    </select>
+                                )}
+                            </div>
+ 
+                            {isCoding ? (
+                                <div className="iv-monaco-wrap">
+                                    <Editor
+                                        height="280px"
+                                        language={language}
+                                        theme="vs-dark"
+                                        value={answer}
+                                        onChange={v => setAnswer(v || "")}
+                                        options={{
+                                            fontSize: 13,
+                                            fontFamily: "'Geist Mono', monospace",
+                                            minimap: { enabled: false },
+                                            scrollBeyondLastLine: false,
+                                            padding: { top: 14, bottom: 14 },
+                                            lineNumbers: "on",
+                                            renderLineHighlight: "none",
+                                        }}
+                                    />
+                                </div>
+                            ) : (
+                                <textarea
+                                    className="iv-textarea"
+                                    placeholder="Type your answer here..."
+                                    value={answer}
+                                    onChange={e => setAnswer(e.target.value)}
+                                />
+                            )}
+ 
+                            <div className="iv-actions">
+                                <button className="iv-hint-toggle" onClick={() => setShowHints(s => !s)}>
+                                    {showHints ? "hide hints" : "show hints"}
+                                </button>
+                                <button
+                                    className="iv-submit-btn"
+                                    onClick={handleSubmit}
+                                    disabled={submitting || !answer.trim()}
+                                >
+                                    {submitting ? <><div className="iv-spinner" style={{ width: 14, height: 14 }} /> evaluating...</> : "Submit →"}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+ 
+                    {/* Result */}
+                    {result && (
+                        <div className="iv-result-card">
+                            <div className="iv-score-row">
+                                <div>
+                                    <div className="iv-score-num" style={{ color: scoreColor(result.score) }}>
+                                        {result.score}<span style={{ fontSize: 18, color: "#334155" }}>/100</span>
+                                    </div>
+                                    <div className="iv-verdict">"{result.verdict}"</div>
+                                </div>
+                                <div className="iv-score-bar-bg">
+                                    <div
+                                        className="iv-score-bar-fill"
+                                        style={{ width: `${result.score}%`, background: scoreColor(result.score) }}
+                                    />
+                                </div>
+                            </div>
+ 
+                            <div className="iv-result-sections">
+                                <div>
+                                    <div className="iv-result-section-title" style={{ color: "#4ade80" }}>✓ Strengths</div>
+                                    <ul className="iv-result-list">
+                                        {result.strengths.map((s, i) => (
+                                            <li key={i}><span style={{ color: "#166534" }}>+</span>{s}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                                <div>
+                                    <div className="iv-result-section-title" style={{ color: "#fb923c" }}>△ Improvements</div>
+                                    <ul className="iv-result-list">
+                                        {result.improvements.map((s, i) => (
+                                            <li key={i}><span style={{ color: "#7c2d12" }}>!</span>{s}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
+ 
+                            <div className="iv-model-summary">
+                                <span style={{ fontFamily: "'Geist Mono',monospace", fontSize: 10, color: "#334155", display: "block", marginBottom: 6, letterSpacing: "0.1em", textTransform: "uppercase" }}>model answer</span>
+                                {result.model_answer_summary}
+                            </div>
+ 
+                            {/* Followup question display */}
+                            {followup && (
+                                <div className="iv-followup-card" style={{ marginBottom: "1rem" }}>
+                                    <div className="iv-followup-label">⟳ follow-up</div>
+                                    <div className="iv-followup-q">{followup.follow_up_question}</div>
+                                    <div style={{ fontSize: 11, color: "#4338ca", marginTop: 6, fontFamily: "'Geist Mono',monospace" }}>
+                                        {followup.reason}
+                                    </div>
+                                </div>
+                            )}
+ 
+                            <div className="iv-result-actions">
+                                <button
+                                    className="iv-followup-btn"
+                                    onClick={handleFollowup}
+                                    disabled={loadingFollowup || !!followup}
+                                >
+                                    {loadingFollowup ? "thinking..." : followup ? "asked ✓" : "⟳ ask follow-up"}
+                                </button>
+                                <button className="iv-next-btn" onClick={handleNext}>
+                                    {qNum + 1 >= TOTAL_QUESTIONS ? "View Results →" : `Next Question →`}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </>
+    );
 };
+export default Interview;
