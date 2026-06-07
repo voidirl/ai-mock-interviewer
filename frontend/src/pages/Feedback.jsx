@@ -386,3 +386,176 @@ const css = `
     font-size: 13px;
 }
 `;
+
+const scoreColor = (s) => {
+    if (s >= 80) return "#4ade80";
+    if (s >= 50) return "#fb923c";
+    return "#f87171";
+};
+
+const scoreGrade = (avg) => {
+    if (avg >= 85) return { label: "Exceptional", color: "#4ade80" };
+    if (avg >= 70) return { label: "Solid", color: "#a3e635" };
+    if (avg >= 55) return { label: "Decent", color: "#fb923c" };
+    if (avg >= 40) return { label: "Needs Work", color: "#f97316" };
+    return { label: "Keep Grinding", color: "#f87171" };
+};
+const Feedback = () => {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const { session = [], config = {} } = location.state || {};
+
+    const [expanded, setExpanded] = useState(null);
+
+    if (!session.length) {
+        return (
+            <>
+                <style>{css}</style>
+                <div className="fb-root">
+                    <div className="fb-empty">
+                        <span>no session data found</span>
+                        <button className="fb-new-btn" onClick={() => navigate("/dashboard")}>← back to dashboard</button>
+                    </div>
+                </div>
+            </>
+        );
+    }
+
+    const scores = session.map(s => s.result.score);
+    const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+    const best = Math.max(...scores);
+    const worst = Math.min(...scores);
+    const grade = scoreGrade(avg);
+
+    const toggleExpand = (i) => setExpanded(e => e === i ? null : i);
+
+    return (
+        <>
+            <style>{css}</style>
+            <div className="fb-root">
+                <div className="fb-grid-bg" />
+
+                <nav className="fb-nav">
+                    <div className="fb-logo">
+                        <div className="fb-logo-icon">M</div>
+                        MockForge
+                    </div>
+                    <button className="fb-home-btn" onClick={() => navigate("/dashboard")}>← Dashboard</button>
+                </nav>
+                <div className="fb-body">
+
+                    {/* Hero */}
+                    <div className="fb-hero">
+                        <div className="fb-hero-left">
+                            <div className="fb-hero-tag">session complete · {session.length} questions</div>
+                            <div className="fb-hero-score" style={{ color: grade.color }}>
+                                {avg}<span className="fb-hero-denom">/100</span>
+                            </div>
+                            <div className="fb-hero-verdict">{grade.label}</div>
+                        </div>
+                        <div className="fb-hero-right">
+                            {[
+                                { label: "topic", val: config.topic, color: "#00d2a0" },
+                                { label: "difficulty", val: config.difficulty, color: "#fb923c" },
+                                { label: "best score", val: `${best}/100`, color: "#4ade80" },
+                                { label: "worst score", val: `${worst}/100`, color: "#f87171" },
+                                { label: "type", val: config.question_type?.replace("_", " "), color: "#94a3b8" },
+                            ].map(s => (
+                                <div key={s.label} className="fb-stat-chip">
+                                    <span className="fb-stat-label">{s.label}</span>
+                                    <span className="fb-stat-val" style={{ color: s.color }}>{s.val}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="fb-divider" />
+
+                    {/* Per-question bars */}
+                    <div className="fb-section-label">score breakdown</div>
+                    <div className="fb-score-bars">
+                        {session.map((s, i) => (
+                            <div key={i} className="fb-bar-row">
+                                <span className="fb-bar-label">Q{i + 1}</span>
+                                <div className="fb-bar-track">
+                                    <div
+                                        className="fb-bar-fill"
+                                        style={{
+                                            width: `${s.result.score}%`,
+                                            background: scoreColor(s.result.score),
+                                        }}
+                                    />
+                                </div>
+                                <span className="fb-bar-val" style={{ color: scoreColor(s.result.score) }}>{s.result.score}</span>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="fb-divider" />
+
+                    {/* Q breakdown */}
+                    <div className="fb-section-label">question review</div>
+                    <div className="fb-q-list">
+                        {session.map((s, i) => {
+                            const open = expanded === i;
+                            const sc = s.result.score;
+                            const c = scoreColor(sc);
+                            return (
+                                <div key={i} className="fb-q-item" style={{ animationDelay: `${i * 0.05}s` }}>
+                                    <div className="fb-q-header" onClick={() => toggleExpand(i)}>
+                                        <span className="fb-q-num">Q{i + 1}</span>
+                                        <div
+                                            className="fb-q-score-badge"
+                                            style={{ background: `${c}18`, border: `1px solid ${c}30`, color: c }}
+                                        >{sc}</div>
+                                        <div className="fb-q-summary">
+                                            <div className="fb-q-text-preview">{s.question}</div>
+                                            <div className="fb-q-verdict-small">"{s.result.verdict}"</div>
+                                        </div>
+                                        <span className={`fb-q-chevron ${open ? "open" : ""}`}>▶</span>
+                                    </div>
+
+                                    {open && (
+                                        <div className="fb-q-detail">
+                                            <div className="fb-detail-section">
+                                                <div className="fb-detail-title" style={{ color: "#4ade80" }}>Strengths</div>
+                                                <ul className="fb-detail-list">
+                                                    {s.result.strengths.map((str, j) => (
+                                                        <li key={j}><span style={{ color: "#166534" }}>+</span>{str}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                            <div className="fb-detail-section">
+                                                <div className="fb-detail-title" style={{ color: "#fb923c" }}>Improvements</div>
+                                                <ul className="fb-detail-list">
+                                                    {s.result.improvements.map((imp, j) => (
+                                                        <li key={j}><span style={{ color: "#7c2d12" }}>!</span>{imp}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                            <div className="fb-model-ans">
+                                                <span style={{ fontFamily: "'Geist Mono',monospace", fontSize: 10, color: "#334155", display: "block", marginBottom: 5, letterSpacing: "0.1em", textTransform: "uppercase" }}>model answer</span>
+                                                {s.result.model_answer_summary}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="fb-footer">
+                        <button className="fb-retry-btn" onClick={() => navigate("/interview", { state: config })}>
+                            ↺ retry same config
+                        </button>
+                        <button className="fb-new-btn" onClick={() => navigate("/dashboard")}>
+                            New Session →
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+};
+export default Feedback;
